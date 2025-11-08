@@ -1,6 +1,7 @@
 // Margine esterno per non disegnare sui bordi del canvas
 let outerMargin = 100;
-let data;
+let rightMargin = 320; // Spazio riservato per la legenda
+let dataObj;
 let minLat, maxLat, minLon, maxLon;
 let minElevation, maxElevation;
 let validRows = [];
@@ -18,8 +19,9 @@ const statusColors = {
 };
 
 function preload() {
-  // Carica il CSV con header - p5.js gestisce gli errori automaticamente
-  data = loadTable('dataset.csv', 'csv', 'header', 
+  // Carica il CSV con header - aggiungi timestamp per evitare cache
+  let timestamp = Date.now();
+  dataObj = loadTable('dataset.csv?v=' + timestamp, 'csv', 'header', 
     () => {
       console.log("✓ CSV caricato con successo");
     },
@@ -32,47 +34,52 @@ function preload() {
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  textFont('Arial');
+  
+  // Fix per Safari: controlla se il font esiste prima di usarlo
+  try {
+    textFont('Atlas');
+  } catch(e) {
+    console.log("Font Atlas non disponibile, uso Arial");
+  }
+  
+  // Calcola margini responsivi
+  calculateMargins();
   
   console.log("=== DEBUG INFO ===");
   console.log("Window size:", windowWidth, "x", windowHeight);
+  console.log("Browser:", navigator.userAgent.includes('Safari') ? 'Safari' : 'Other');
   
   // Controlla se ci sono errori di caricamento
   if (loadError) {
     console.error("✗ Il file dataset.csv non è stato caricato!");
-    console.log("Verifica:");
-    console.log("1. Il file dataset.csv è nella stessa cartella di index.html");
-    console.log("2. Il nome del file è esattamente 'dataset.csv' (minuscolo)");
-    console.log("3. Il server permette il caricamento di file CSV");
     return;
   }
   
-  if (!data) {
-    console.error("✗ Oggetto data è null o undefined");
+  if (!dataObj) {
+    console.error("✗ Oggetto dataObj è null o undefined");
     return;
   }
   
   console.log("✓ Data object exists");
-  console.log("Righe totali nel CSV:", data.getRowCount());
-  console.log("Numero colonne:", data.getColumnCount());
-  console.log("Nomi colonne:", data.columns);
+  console.log("Righe totali nel CSV:", dataObj.getRowCount());
+  console.log("Numero colonne:", dataObj.getColumnCount());
+  console.log("Nomi colonne:", dataObj.columns);
   
   // Mostra alcune righe di esempio
-  if (data.getRowCount() > 0) {
+  if (dataObj.getRowCount() > 0) {
     console.log("Prima riga esempio:");
-    console.log("  Volcano Name:", data.getString(0, 'Volcano Name'));
-    console.log("  Latitude:", data.get(0, 'Latitude'));
-    console.log("  Longitude:", data.get(0, 'Longitude'));
+    console.log("  Volcano Name:", dataObj.getString(0, 'Volcano Name'));
+    console.log("  Latitude:", dataObj.get(0, 'Latitude'));
+    console.log("  Longitude:", dataObj.get(0, 'Longitude'));
   }
   
   // Filtra solo le righe con coordinate valide
-  for (let i = 0; i < data.getRowCount(); i++) {
-    let latStr = data.get(i, 'Latitude');
-    let lonStr = data.get(i, 'Longitude');
+  for (let i = 0; i < dataObj.getRowCount(); i++) {
+    let latStr = dataObj.get(i, 'Latitude');
+    let lonStr = dataObj.get(i, 'Longitude');
     let lat = parseFloat(latStr);
     let lon = parseFloat(lonStr);
     
-    // Controlla se lat e lon sono numeri validi
     if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
       validRows.push(i);
     }
@@ -82,7 +89,6 @@ function setup() {
   
   if (validRows.length === 0) {
     console.error("ERRORE: Nessun vulcano con coordinate valide trovato!");
-    console.log("Controlla che le colonne 'Latitude' e 'Longitude' esistano e contengano numeri");
     return;
   }
   
@@ -92,12 +98,12 @@ function setup() {
   let elevs = [];
   
   for (let i of validRows) {
-    let lat = parseFloat(data.get(i, 'Latitude'));
-    let lon = parseFloat(data.get(i, 'Longitude'));
+    let lat = parseFloat(dataObj.get(i, 'Latitude'));
+    let lon = parseFloat(dataObj.get(i, 'Longitude'));
     lats.push(lat);
     lons.push(lon);
     
-    let elevStr = data.get(i, 'Elevation (m)');
+    let elevStr = dataObj.get(i, 'Elevation (m)');
     let elev = parseFloat(elevStr);
     if (!isNaN(elev) && elev > 0) elevs.push(elev);
   }
@@ -115,75 +121,89 @@ function setup() {
   console.log("==================");
 }
 
+function calculateMargins() {
+  if (width < 600) {
+    outerMargin = 40;
+    rightMargin = 0; // Niente legenda su mobile
+  } else if (width < 900) {
+    outerMargin = 60;
+    rightMargin = 200;
+  } else if (width < 1200) {
+    outerMargin = 100;
+    rightMargin = 220;
+  } else {
+    outerMargin = 100;
+    rightMargin = 320;
+  }
+}
+
 function draw() {
-  // Sfondo scuro
   background(15, 20, 35);
   
-  // Se ci sono errori, mostra messaggio
-  if (loadError || !data) {
+  if (loadError || !dataObj) {
+    push();
     fill(255, 100, 100);
     textAlign(CENTER, CENTER);
     textSize(20);
     text("ERRORE: Impossibile caricare dataset.csv", width/2, height/2 - 20);
     textSize(14);
+    fill(255);
     text("Controlla che il file sia nella stessa cartella di index.html", width/2, height/2 + 20);
+    pop();
     return;
   }
   
   if (validRows.length === 0) {
+    push();
     fill(255, 200, 100);
     textAlign(CENTER, CENTER);
     textSize(20);
     text("Nessun vulcano con coordinate valide trovato", width/2, height/2);
     textSize(14);
+    fill(255);
     text("Apri la Console (F12) per dettagli", width/2, height/2 + 30);
+    pop();
     return;
   }
   
-  // Titolo
   drawTitle();
   
-  // Legenda (solo se c'è spazio)
-  if (width > 900) {
-    drawLegend();
+  // Legenda SEMPRE visibile a destra se c'è spazio
+  if (width > 800) {
+    drawLegend(width > 1200 ? 'full' : 'compact');
   }
   
-  // Variabile per memorizzare il vulcano su cui passa il mouse
   let hovered = null;
   
-  // Ciclo per disegnare ogni vulcano valido
+  // Disegna tutti i vulcani
   for (let i of validRows) {
-    // Leggo i dati dalle colonne
-    let name = data.get(i, 'Volcano Name');
-    let country = data.get(i, 'Country');
-    let lat = parseFloat(data.get(i, 'Latitude'));
-    let lon = parseFloat(data.get(i, 'Longitude'));
-    let elevStr = data.get(i, 'Elevation (m)');
+    let name = dataObj.get(i, 'Volcano Name');
+    let country = dataObj.get(i, 'Country');
+    let lat = parseFloat(dataObj.get(i, 'Latitude'));
+    let lon = parseFloat(dataObj.get(i, 'Longitude'));
+    let elevStr = dataObj.get(i, 'Elevation (m)');
     let elevation = parseFloat(elevStr);
-    let type = data.get(i, 'Type');
-    let typeCategory = data.get(i, 'TypeCategory');
-    let status = data.get(i, 'Status');
-    let lastEruption = data.get(i, 'Last Known Eruption');
+    let type = dataObj.get(i, 'Type');
+    let typeCategory = dataObj.get(i, 'TypeCategory');
+    let status = dataObj.get(i, 'Status');
+    let lastEruption = dataObj.get(i, 'Last Known Eruption');
     
-    // Converto le coordinate geografiche in coordinate del canvas
-    let x = map(lon, minLon, maxLon, outerMargin, width - outerMargin);
+    let x = map(lon, minLon, maxLon, outerMargin, width - outerMargin - rightMargin);
     let y = map(lat, minLat, maxLat, height - outerMargin, outerMargin);
     
-    // Dimensione basata su elevazione
-    let size = 10; // default
+    let minSize = width < 600 ? 4 : 6;
+    let maxSize = width < 600 ? 12 : 20;
+    let size = minSize;
     if (!isNaN(elevation) && elevation > 0) {
-      size = map(elevation, minElevation, maxElevation, 6, 20);
-      size = constrain(size, 6, 20);
+      size = map(elevation, minElevation, maxElevation, minSize, maxSize);
+      size = constrain(size, minSize, maxSize);
     }
     
-    // Colore basato su status
     let col = statusColors[status] || '#FFFFFF';
     
-    // Calcolo la distanza dal mouse
     let d = dist(mouseX, mouseY, x, y);
     let isHovered = d < size + 3;
     
-    // Se il mouse è sopra il glifo, salvo i dati
     if (isHovered) {
       hovered = {
         x: x,
@@ -200,11 +220,10 @@ function draw() {
       };
     }
     
-    // Disegna il glifo
     drawGlyph(x, y, size, col, typeCategory, isHovered);
   }
   
-  // Tooltip per vulcano selezionato
+  // Tooltip - SEMPRE disegnato per ultimo per stare sopra tutto
   if (hovered) {
     cursor('pointer');
     drawTooltip(hovered);
@@ -213,11 +232,17 @@ function draw() {
   }
   
   // Info interazione
+  push();
   fill(255, 150);
   noStroke();
-  textSize(12);
-  textAlign(LEFT);
-  text('Passa il mouse sui vulcani per vedere i dettagli • ' + validRows.length + ' vulcani visualizzati', 20, height - 20);
+  let fontSize = width < 600 ? 10 : 12;
+  textSize(fontSize);
+  textAlign(LEFT, BOTTOM);
+  let infoText = width < 600 
+    ? validRows.length + ' vulcani' 
+    : 'Passa il mouse sui vulcani per scoprire di più • ' + validRows.length + ' vulcani';
+  text(infoText, 20, height - 10);
+  pop();
 }
 
 function drawGlyph(x, y, size, col, typeCategory, isHovered) {
@@ -225,14 +250,12 @@ function drawGlyph(x, y, size, col, typeCategory, isHovered) {
   translate(x, y);
   
   if (isHovered) {
-    // Alone di evidenziazione
     noFill();
     stroke(255, 200);
     strokeWeight(2);
     ellipse(0, 0, size * 3.5, size * 3.5);
   }
   
-  // Forma basata su tipo
   fill(col);
   noStroke();
   
@@ -241,35 +264,27 @@ function drawGlyph(x, y, size, col, typeCategory, isHovered) {
     strokeWeight(1.5);
   }
   
-  // Diverse forme per diverse categorie
   if (typeCategory && typeCategory.includes('Stratovolcano')) {
-    // Triangolo per stratovulcani
     triangle(0, -size * 0.7, -size * 0.6, size * 0.5, size * 0.6, size * 0.5);
   } else if (typeCategory && typeCategory.includes('Shield')) {
-    // Arco per vulcani a scudo
     arc(0, size * 0.2, size * 1.8, size * 1.8, PI, TWO_PI);
     line(-size * 0.9, size * 0.2, size * 0.9, size * 0.2);
   } else if (typeCategory && typeCategory.includes('Caldera')) {
-    // Anello per caldere
     stroke(col);
     strokeWeight(size * 0.25);
     noFill();
     ellipse(0, 0, size * 1.4, size * 1.4);
   } else if (typeCategory && typeCategory.includes('Complex')) {
-    // Quadrato per complessi
     rectMode(CENTER);
     rect(0, 0, size * 1.3, size * 1.3);
   } else if (typeCategory && typeCategory.includes('Cone')) {
-    // Triangolo piccolo per coni
     triangle(0, -size * 0.6, -size * 0.5, size * 0.4, size * 0.5, size * 0.4);
   } else if (typeCategory && (typeCategory.includes('Submarine') || typeCategory.includes('Hydrophonic'))) {
-    // Forma ondulata per sottomarini
     noFill();
     stroke(col);
     strokeWeight(2);
     arc(0, 0, size * 1.5, size * 1.5, 0, PI);
   } else {
-    // Cerchio di default
     ellipse(0, 0, size * 1.3, size * 1.3);
   }
   
@@ -277,224 +292,327 @@ function drawGlyph(x, y, size, col, typeCategory, isHovered) {
 }
 
 function drawTitle() {
+  push();
   fill(255);
   noStroke();
-  textSize(28);
-  textAlign(LEFT);
-  text('VULCANI DEL MONDO', 20, 45);
   
-  textSize(13);
-  fill(200);
-  text('Mappa geografica • Colore = Status • Forma = Tipo • Dimensione = Elevazione', 20, 68);
+  let titleSize = width < 600 ? 18 : (width < 900 ? 22 : 28);
+  let subtitleSize = width < 600 ? 10 : (width < 900 ? 11 : 13);
+  
+  textSize(titleSize);
+  textAlign(LEFT, TOP);
+  text('VULCANI DEL MONDO', 20, 25);
+  
+  if (width > 600) {
+    textSize(subtitleSize);
+    fill(200);
+    text('Rappresentazione geografica attraverso un sistema di glifi', 20, 57);
+  }
+  pop();
 }
 
-function drawLegend() {
-  let legendX = width - 330;
-  let legendY = 100;
+function drawLegend(mode) {
+  push();
   
-  // Box legenda con sfondo più opaco e ombra
+  let legendW = mode === 'compact' ? 180 : 270;
+  let legendH = mode === 'compact' ? 260 : 460;
+  let legendX = width - legendW - 25;
+  let legendY = 110;
+  
   // Ombra
   noStroke();
-  fill(0, 0, 0, 100);
-  rect(legendX - 8, legendY - 8, 310, 500, 8);
+  fill(0, 0, 0, 80);
+  rect(legendX + 4, legendY + 4, legendW, legendH, 8);
   
-  // Sfondo principale
-  fill(15, 20, 35, 245);
+  // Sfondo
+  fill(15, 20, 35, 240);
   stroke(120, 130, 150);
-  strokeWeight(2);
-  rect(legendX - 10, legendY - 10, 310, 500, 8);
+  strokeWeight(1.5);
+  rect(legendX, legendY, legendW, legendH, 8);
   
-  // Bordo interno per maggiore definizione
+  // Bordo interno
   noFill();
   stroke(60, 70, 90);
   strokeWeight(1);
-  rect(legendX - 8, legendY - 8, 306, 496, 7);
+  rect(legendX + 3, legendY + 3, legendW - 6, legendH - 6, 6);
   
-  // Titolo legenda
-  fill(255);
-  noStroke();
-  textSize(15);
-  textAlign(LEFT);
-  text('LEGENDA', legendX, legendY + 12);
-  
-  // Status (colori)
-  textSize(11);
-  fill(180);
-  text('STATUS (colore):', legendX, legendY + 40);
-  
-  let yOffset = legendY + 58;
-  let statuses = ['Historical', 'Holocene', 'Pleistocene', 'Fumarolic', 'Unknown'];
-  for (let status of statuses) {
-    fill(statusColors[status]);
-    ellipse(legendX + 8, yOffset, 10, 10);
-    fill(255);
-    noStroke();
-    textAlign(LEFT);
-    textSize(10);
-    text(status, legendX + 25, yOffset + 4);
-    yOffset += 22;
-  }
-  
-  // Forme (tipi)
-  yOffset += 15;
-  fill(180);
-  textSize(11);
-  text('TIPO (forma):', legendX, yOffset);
-  yOffset += 18;
-  
-  // Stratovolcano
-  fill(255);
-  noStroke();
-  triangle(legendX + 8, yOffset - 6, legendX + 2, yOffset + 6, legendX + 14, yOffset + 6);
-  textSize(10);
-  text('Stratovolcano', legendX + 25, yOffset + 4);
-  yOffset += 22;
-  
-  // Shield
-  arc(legendX + 8, yOffset + 2, 14, 14, PI, TWO_PI);
-  line(legendX + 1, yOffset + 2, legendX + 15, yOffset + 2);
-  text('Shield', legendX + 25, yOffset + 4);
-  yOffset += 22;
-  
-  // Caldera
-  noFill();
-  stroke(255);
-  strokeWeight(2);
-  ellipse(legendX + 8, yOffset, 12, 12);
-  noStroke();
-  fill(255);
-  text('Caldera', legendX + 25, yOffset + 4);
-  yOffset += 22;
-  
-  // Complex
-  rectMode(CENTER);
-  rect(legendX + 8, yOffset, 10, 10);
-  text('Complex', legendX + 25, yOffset + 4);
-  yOffset += 22;
-  
-  // Cone
-  triangle(legendX + 8, yOffset - 5, legendX + 3, yOffset + 5, legendX + 13, yOffset + 5);
-  text('Cone', legendX + 25, yOffset + 4);
-  yOffset += 22;
-  
-  // Submarine
-  noFill();
-  stroke(255);
-  strokeWeight(2);
-  arc(legendX + 8, yOffset, 12, 12, 0, PI);
-  noStroke();
-  fill(255);
-  text('Submarine', legendX + 25, yOffset + 4);
-  yOffset += 22;
-  
-  // Altro
-  ellipse(legendX + 8, yOffset, 10, 10);
-  text('Altri tipi', legendX + 25, yOffset + 4);
-  
-  // Dimensione
-  yOffset += 30;
-  fill(180);
-  textSize(11);
-  text('DIMENSIONE (elevazione):', legendX, yOffset);
-  yOffset += 18;
-  
-  fill(255);
-  ellipse(legendX + 6, yOffset, 6, 6);
-  textSize(10);
-  text('Bassa', legendX + 25, yOffset + 4);
-  yOffset += 22;
-  
-  ellipse(legendX + 8, yOffset, 12, 12);
-  text('Media', legendX + 25, yOffset + 4);
-  yOffset += 25;
-  
-  ellipse(legendX + 10, yOffset, 20, 20);
-  text('Alta', legendX + 25, yOffset + 4);
-}
-
-function drawTooltip(v) {
-  let tooltipW = 280;
-  let padding = 12;
-  let lineHeight = 18;
-  let titleHeight = 22;
-  
-  // Calcola dinamicamente l'altezza in base ai campi disponibili
-  let lines = 1; // titolo
-  lines++; // paese
-  if (v.type && v.type !== 'N/A') lines++;
-  if (v.typeCategory && v.typeCategory !== 'N/A') lines++;
-  lines++; // status
-  lines++; // elevazione
-  if (v.lastEruption && v.lastEruption !== 'Sconosciuta') lines++;
-  lines++; // coordinate
-  
-  let tooltipH = titleHeight + (lines * lineHeight) + padding;
-  
-  // Posiziona SEMPRE a lato del vulcano, mai sopra
-  // Prima prova a destra
-  let tooltipX = v.x + 25;
-  let tooltipY = v.y - tooltipH / 2;
-  
-  // Se esce a destra, metti a sinistra
-  if (tooltipX + tooltipW > width - 20) {
-    tooltipX = v.x - tooltipW - 25;
-  }
-  
-  // Aggiusta verticalmente se esce dallo schermo
-  if (tooltipY < 20) tooltipY = 20;
-  if (tooltipY + tooltipH > height - 20) tooltipY = height - tooltipH - 20;
-  
-  // Box tooltip
-  fill(20, 25, 40, 250);
-  stroke(255, 255, 255, 200);
-  strokeWeight(2);
-  rect(tooltipX, tooltipY, tooltipW, tooltipH, 6);
-  
-  // Linea che collega tooltip al vulcano
-  stroke(255, 255, 255, 100);
-  strokeWeight(1);
-  line(v.x, v.y, tooltipX + (tooltipX > v.x ? 0 : tooltipW), tooltipY + tooltipH / 2);
-  
-  // Testo
+  // Titolo
   fill(255);
   noStroke();
   textSize(13);
-  textAlign(LEFT);
+  textAlign(LEFT, TOP);
+  text('LEGENDA', legendX + 15, legendY + 15);
   
-  let ty = tooltipY + titleHeight;
-  text(v.name, tooltipX + padding, ty);
+  let yPos = legendY + 40;
+  let spacing = mode === 'compact' ? 17 : 20;
+  let txtSize = mode === 'compact' ? 9 : 10;
   
+  // STATUS
   textSize(10);
+  fill(180);
+  text('STATUS:', legendX + 15, yPos);
+  yPos += spacing + 3;
+  
+  let statuses = mode === 'compact' 
+    ? ['Historical', 'Holocene', 'Fumarolic'] 
+    : ['Historical', 'Holocene', 'Pleistocene', 'Fumarolic', 'Unknown'];
+  
+  textSize(txtSize);
+  for (let status of statuses) {
+    fill(statusColors[status]);
+    noStroke();
+    ellipse(legendX + 20, yPos, 7, 7);
+    fill(230);
+    textAlign(LEFT, TOP);
+    text(status, legendX + 32, yPos - 5);
+    yPos += spacing;
+  }
+  
+  // TIPO
+  yPos += 8;
+  fill(180);
+  textSize(10);
+  text('TIPO:', legendX + 15, yPos);
+  yPos += spacing + 3;
+  
+  textSize(txtSize);
+  if (mode === 'full') {
+    // Stratovolcano
+    fill(255);
+    noStroke();
+    triangle(legendX + 20, yPos - 3, legendX + 15, yPos + 4, legendX + 25, yPos + 4);
+    text('Stratovolcano', legendX + 32, yPos - 5);
+    yPos += spacing;
+    
+    // Shield
+    arc(legendX + 20, yPos + 1, 11, 11, PI, TWO_PI);
+    line(legendX + 14.5, yPos + 1, legendX + 25.5, yPos + 1);
+    text('Shield', legendX + 32, yPos - 5);
+    yPos += spacing;
+    
+    // Caldera
+    noFill();
+    stroke(255);
+    strokeWeight(1.5);
+    ellipse(legendX + 20, yPos, 9, 9);
+    noStroke();
+    fill(255);
+    text('Caldera', legendX + 32, yPos - 5);
+    yPos += spacing;
+    
+    // Complex
+    noStroke();
+    rectMode(CENTER);
+    rect(legendX + 20, yPos, 8, 8);
+    text('Complex', legendX + 32, yPos - 5);
+    yPos += spacing;
+    
+    // Altri
+    ellipse(legendX + 20, yPos, 7, 7);
+    text('Altri', legendX + 32, yPos - 5);
+    
+    // ELEVAZIONE
+    yPos += spacing + 15;
+    fill(180);
+    textSize(10);
+    text('ELEVAZIONE:', legendX + 15, yPos);
+    yPos += spacing + 3;
+    
+    fill(255);
+    textSize(txtSize);
+    ellipse(legendX + 18, yPos, 5, 5);
+    text('Bassa', legendX + 32, yPos - 5);
+    yPos += spacing;
+    
+    ellipse(legendX + 20, yPos, 10, 10);
+    text('Media', legendX + 32, yPos - 5);
+    yPos += spacing + 4;
+    
+    ellipse(legendX + 22, yPos, 16, 16);
+    text('Alta', legendX + 32, yPos - 5);
+  } else {
+    // Versione compatta
+    fill(255);
+    noStroke();
+    triangle(legendX + 20, yPos - 3, legendX + 15, yPos + 4, legendX + 25, yPos + 4);
+    text('Strato', legendX + 32, yPos - 5);
+    yPos += spacing;
+    
+    noFill();
+    stroke(255);
+    strokeWeight(1.5);
+    ellipse(legendX + 20, yPos, 9, 9);
+    noStroke();
+    fill(255);
+    text('Caldera', legendX + 32, yPos - 5);
+    yPos += spacing;
+    
+    noStroke();
+    ellipse(legendX + 20, yPos, 7, 7);
+    text('Altri', legendX + 32, yPos - 5);
+  }
+  
+  pop();
+}
+
+function drawTooltip(v) {
+  push();
+  
+  let tooltipW = width < 600 ? 200 : 280;
+  let padding = 12;
+  let lineH = width < 600 ? 15 : 17;
+  let titleH = width < 600 ? 20 : 28; // Più alto per fare spazio al simbolo
+  
+  // Calcola altezza necessaria
+  let numLines = 2; // nome + paese
+  if (v.type && v.type !== 'N/A') numLines++;
+  if (v.typeCategory && v.typeCategory !== 'N/A') numLines++;
+  numLines++; // status
+  numLines++; // elevation
+  if (v.lastEruption && v.lastEruption !== 'Sconosciuta') numLines++;
+  numLines++; // coordinate
+  
+  let tooltipH = titleH + (numLines * lineH) + padding * 2;
+  
+  // POSIZIONAMENTO LATERALE (non sopra!)
+  let tooltipX, tooltipY;
+  let spacing = 30; // Distanza dal vulcano
+  
+  // Prima prova a DESTRA del vulcano
+  tooltipX = v.x + spacing;
+  tooltipY = v.y - tooltipH / 2;
+  
+  // Se va fuori a destra, metti a SINISTRA
+  if (tooltipX + tooltipW > width - rightMargin - 30) {
+    tooltipX = v.x - tooltipW - spacing;
+  }
+  
+  // Se va fuori a sinistra, forza a destra con clip
+  if (tooltipX < 30) {
+    tooltipX = v.x + spacing;
+    if (tooltipX + tooltipW > width - rightMargin - 30) {
+      tooltipX = width - rightMargin - tooltipW - 30;
+    }
+  }
+  
+  // Aggiusta verticale
+  if (tooltipY < 90) tooltipY = 90;
+  if (tooltipY + tooltipH > height - 50) tooltipY = height - tooltipH - 50;
+  
+  // Linea connettore
+  stroke(255, 255, 255, 80);
+  strokeWeight(1);
+  noFill();
+  let connectorX = tooltipX + (tooltipX > v.x ? 0 : tooltipW);
+  line(v.x, v.y, connectorX, tooltipY + tooltipH / 2);
+  
+  // Box tooltip
+  fill(18, 22, 38, 250);
+  stroke(255, 255, 255, 180);
+  strokeWeight(1.5);
+  rect(tooltipX, tooltipY, tooltipW, tooltipH, 6);
+  
+  // Bordo interno sottile
+  noFill();
+  stroke(80, 90, 110);
+  strokeWeight(1);
+  rect(tooltipX + 2, tooltipY + 2, tooltipW - 4, tooltipH - 4, 5);
+  
+  // Testo
+  noStroke();
+  let titleSize = width < 600 ? 11 : 12;
+  let txtSize = width < 600 ? 9 : 10;
+  
+  textAlign(LEFT, TOP);
+  
+  // Nome vulcano con simbolo a sinistra
+  fill(255);
+  textSize(titleSize);
+  let ty = tooltipY + padding;
+  
+  // Disegna il simbolo del vulcano nel tooltip
+  let symbolSize = 7;
+  let symbolX = tooltipX + padding + symbolSize / 2;
+  let symbolY = ty + symbolSize / 2 + 2;
+  drawGlyphInTooltip(symbolX, symbolY, symbolSize, statusColors[v.status] || '#FFFFFF', v.typeCategory);
+  
+  // Nome accanto al simbolo
+  text(v.name, tooltipX + padding + symbolSize + 8, ty);
+  ty += titleH;
+  
+  // Info dettagliate
   fill(220);
-  ty += lineHeight + 2;
+  textSize(txtSize);
+  
   text('Paese: ' + v.country, tooltipX + padding, ty);
+  ty += lineH;
   
   if (v.type && v.type !== 'N/A') {
-    ty += lineHeight;
     text('Tipo: ' + v.type, tooltipX + padding, ty);
+    ty += lineH;
   }
   
   if (v.typeCategory && v.typeCategory !== 'N/A') {
-    ty += lineHeight;
     text('Categoria: ' + v.typeCategory, tooltipX + padding, ty);
+    ty += lineH;
   }
   
-  ty += lineHeight;
   text('Status: ' + v.status, tooltipX + padding, ty);
+  ty += lineH;
   
-  ty += lineHeight;
-  let elevText = (!isNaN(v.elevation) && v.elevation > 0) ? v.elevation.toFixed(0) + ' m' : 'N/A';
+  let elevText = (!isNaN(v.elevation) && v.elevation > 0) 
+    ? v.elevation.toFixed(0) + ' m' 
+    : 'N/A';
   text('Elevazione: ' + elevText, tooltipX + padding, ty);
+  ty += lineH;
   
   if (v.lastEruption && v.lastEruption !== 'Sconosciuta') {
-    ty += lineHeight;
     text('Ultima eruzione: ' + v.lastEruption, tooltipX + padding, ty);
+    ty += lineH;
   }
   
-  ty += lineHeight;
-  text('Coordinate: ' + v.lat.toFixed(2) + '°, ' + v.lon.toFixed(2) + '°', tooltipX + padding, ty);
+  text('Lat: ' + v.lat.toFixed(2) + '° Lon: ' + v.lon.toFixed(2) + '°', tooltipX + padding, ty);
+  
+  pop();
+}
+
+// Funzione per disegnare il glifo nel tooltip (senza hover effect)
+function drawGlyphInTooltip(x, y, size, col, typeCategory) {
+  push();
+  translate(x, y);
+  
+  fill(col);
+  stroke(255, 255, 255, 150);
+  strokeWeight(1);
+  
+  if (typeCategory && typeCategory.includes('Stratovolcano')) {
+    triangle(0, -size * 0.7, -size * 0.6, size * 0.5, size * 0.6, size * 0.5);
+  } else if (typeCategory && typeCategory.includes('Shield')) {
+    arc(0, size * 0.2, size * 1.8, size * 1.8, PI, TWO_PI);
+    line(-size * 0.9, size * 0.2, size * 0.9, size * 0.2);
+  } else if (typeCategory && typeCategory.includes('Caldera')) {
+    stroke(col);
+    strokeWeight(size * 0.25);
+    noFill();
+    ellipse(0, 0, size * 1.4, size * 1.4);
+  } else if (typeCategory && typeCategory.includes('Complex')) {
+    rectMode(CENTER);
+    rect(0, 0, size * 1.3, size * 1.3);
+  } else if (typeCategory && typeCategory.includes('Cone')) {
+    triangle(0, -size * 0.6, -size * 0.5, size * 0.4, size * 0.5, size * 0.4);
+  } else if (typeCategory && (typeCategory.includes('Submarine') || typeCategory.includes('Hydrophonic'))) {
+    noFill();
+    stroke(col);
+    strokeWeight(2);
+    arc(0, 0, size * 1.5, size * 1.5, 0, PI);
+  } else {
+    ellipse(0, 0, size * 1.3, size * 1.3);
+  }
+  
+  pop();
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  calculateMargins();
 }
