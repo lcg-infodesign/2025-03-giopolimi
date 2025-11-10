@@ -337,11 +337,9 @@ function drawVintageGlyph(x, y, size, col, typeCategory, isHovered) {
   if (isHovered) {
     // Alone luminoso vintage
     noFill();
-    stroke(139, 90, 43, 100);
+    stroke(139, 90, 43, 120);
     strokeWeight(2.5);
-    for (let i = 3; i > 0; i--) {
-      ellipse(0, 0, size * (3 + i * 0.3), size * (3 + i * 0.3));
-    }
+    ellipse(0, 0, size * 3.5, size * 3.5);
   }
   
   fill(col);
@@ -400,7 +398,7 @@ function drawLegend(mode) {
   push();
   
   let legendW = mode === 'compact' ? 185 : 280;
-  let legendH = mode === 'compact' ? 270 : 480;
+  let legendH = mode === 'compact' ? 270 : 520;
   let legendX = width - legendW - 30;
   let legendY = 115;
   
@@ -511,6 +509,16 @@ function drawLegend(mode) {
     noStroke();
     fill(60, 45, 30);
     text('Complex', legendX + 36, yPos - 6);
+    yPos += spacing;
+    
+    // Submarine
+    noFill();
+    stroke(139, 90, 43);
+    strokeWeight(1.5);
+    arc(legendX + 23, yPos, 11, 11, 0, PI);
+    noStroke();
+    fill(60, 45, 30);
+    text('Submarine', legendX + 36, yPos - 6);
     yPos += spacing;
     
     // Altri
@@ -726,7 +734,8 @@ function drawVintageGlyphSmall(x, y, size, col, typeCategory) {
   } else if (typeCategory && typeCategory.includes('Complex')) {
     rectMode(CENTER);
     rect(0, 0, size * 1.4, size * 1.4);
-  } else if (typeCategory && typeCategory.includes('Cone')) {
+  }
+  else if (typeCategory && typeCategory.includes('Cone')) {
     triangle(0, -size * 0.65, -size * 0.55, size * 0.45, size * 0.55, size * 0.45);
   } else if (typeCategory && (typeCategory.includes('Submarine') || typeCategory.includes('Hydrophonic'))) {
     noFill();
