@@ -13,13 +13,13 @@ let countrySelect;
 
 // Palette colori vintage ispirata a mappe antiche
 const statusColors = {
-  'Historical': '#8B3A3A',      // Rosso mattone scuro
-  'Holocene': '#B8860B',        // Oro antico
-  'Pleistocene': '#5F8575',     // Verde mare vintage
-  'Radiocarbon': '#6B8E6B',     // Verde salvia
-  'Fumarolic': '#D4A574',       // Ocra caldo
-  'Uncertain': '#8B8680',       // Grigio pietra
-  'Unknown': '#6B6B6B'          // Grigio ferro
+  'Historical': '#8B3A3A',      
+  'Holocene': '#B8860B',        
+  'Pleistocene': '#5F8575',     
+  'Radiocarbon': '#6B8E6B',     
+  'Fumarolic': '#D4A574',       
+  'Uncertain': '#8B8680',       
+  'Unknown': '#6B6B6B'         
 };
 
 function preload() {
@@ -125,7 +125,7 @@ function createCountryFilter() {
   // Posiziona il dropdown
   positionCountryFilter();
   
-  // Stile vintage per il dropdown
+  // Stile dropdown
   countrySelect.style('font-family', 'Georgia');
   countrySelect.style('font-size', width < 600 ? '12px' : '13px');
   countrySelect.style('padding', '8px 12px');
@@ -141,33 +141,32 @@ function positionCountryFilter() {
   if (!countrySelect) return;
   
   let filterX = 25;
-  let filterY = width < 600 ? 50 : 75;
+  let filterY = width < 600 ? 50 : 79;
   
   countrySelect.position(filterX, filterY);
 }
 
 function calculateMargins() {
   if (width < 600) {
-    outerMargin = 30; // Ridotto da 50
+    outerMargin = 30; 
     rightMargin = 10;
-    topMargin = 75; // Spazio per titolo mobile
+    topMargin = 75; 
   } else if (width < 900) {
-    outerMargin = 50; // Ridotto da 90
+    outerMargin = 50; 
     rightMargin = 200;
-    topMargin = 85; // Spazio per titolo e sottotitolo
+    topMargin = 85; 
   } else if (width < 1200) {
-    outerMargin = 60; // Ridotto da 105
+    outerMargin = 60; 
     rightMargin = 230;
     topMargin = 90;
   } else {
-    outerMargin = 70; // Ridotto da 115
+    outerMargin = 70;
     rightMargin = 340;
     topMargin = 95;
   }
 }
 
 function draw() {
-  // Sfondo pergamena antica
   background(235, 225, 205);
   
   if (loadError || !dataObj) {
@@ -193,7 +192,7 @@ function draw() {
     return;
   }
   
-  // Bordo decorativo stile mappa antica
+  // Bordo decorativo
   drawVintageBorder();
   
   drawTitle();
@@ -236,11 +235,11 @@ function draw() {
     let fMinLon = min(filteredLons);
     let fMaxLon = max(filteredLons);
     
-    // Aggiungi margine del 15% per non tagliare ai bordi
+    // Margine del 15% per non tagliare ai bordi
     let latPadding = (fMaxLat - fMinLat) * 0.15;
     let lonPadding = (fMaxLon - fMinLon) * 0.15;
     
-    // Se il range è molto piccolo, usa un padding minimo
+    // Range è molto piccolo --> padding minimo
     if (latPadding < 2) latPadding = 2;
     if (lonPadding < 2) lonPadding = 2;
     
@@ -255,7 +254,7 @@ function draw() {
     let name = dataObj.get(i, 'Volcano Name');
     let country = dataObj.get(i, 'Country');
     
-    // Applica filtro paese
+    // Filtro paese
     if (countryFilter !== 'All' && country !== countryFilter) {
       continue;
     }
@@ -320,7 +319,6 @@ function drawVintageBorder() {
   push();
   noFill();
   
-  // Bordo principale doppio
   stroke(90, 70, 50);
   strokeWeight(3);
   rect(outerMargin - 50, topMargin - 20, 
@@ -335,7 +333,7 @@ function drawVintageGlyph(x, y, size, col, typeCategory, isHovered) {
   translate(x, y);
   
   if (isHovered) {
-    // Alone luminoso vintage
+    // Alone luminoso
     noFill();
     stroke(139, 90, 43, 120);
     strokeWeight(2.5);
@@ -346,7 +344,7 @@ function drawVintageGlyph(x, y, size, col, typeCategory, isHovered) {
   stroke(60, 45, 30, 200);
   strokeWeight(isHovered ? 2.5 : 1.8);
   
-  // Disegna glifo in base al tipo
+  // Glifo in base al tipo
   if (typeCategory && typeCategory.includes('Stratovolcano')) {
     triangle(0, -size * 0.75, -size * 0.65, size * 0.55, size * 0.65, size * 0.55);
   } else if (typeCategory && typeCategory.includes('Shield')) {
@@ -402,12 +400,11 @@ function drawLegend(mode) {
   let legendX = width - legendW - 30;
   let legendY = 115;
   
-  // Ombra vintage
   noStroke();
   fill(80, 60, 40, 50);
   rect(legendX + 5, legendY + 5, legendW, legendH, 4);
   
-  // Sfondo pergamena
+  // Sfondo
   fill(230, 220, 195, 250);
   stroke(90, 70, 50);
   strokeWeight(3);
@@ -638,7 +635,7 @@ function drawVintageTooltip(v) {
   let connectorX = tooltipX + (tooltipX > v.x ? 0 : tooltipW);
   line(v.x, v.y, connectorX, tooltipY + tooltipH / 2);
   
-  // Box tooltip pergamena
+  // Box pergamena
   fill(230, 220, 195, 250);
   stroke(90, 70, 50);
   strokeWeight(3);
